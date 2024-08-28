@@ -1,0 +1,18 @@
+---
+  DOMAIN_FILE: /data/domains_ctcollector.txt
+  LOGS_FOLDER: /data/test4/scanner
+  QUERIES_PER_SECOND: 200
+  QUERY_TIMEOUT: 1
+  RESOLVERS:
+    dnsr1: 
+      hostname: dnsr1
+      port: 53535
+    dnsr2: 
+      hostname: dnsr2
+      port: 53535
+    dnsr3: 
+      hostname: dnsr3
+      port: 53535
+    dnsr4: 
+      hostname: dnsr4
+      port: 53535

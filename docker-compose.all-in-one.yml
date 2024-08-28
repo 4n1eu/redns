@@ -1,0 +1,86 @@
+version: '3.7'
+
+services:
+
+  dnsr1:
+    build: 
+      context: ./dnsr/
+    ports:
+      - 53535/udp
+    environment:
+      PYTHONUNBUFFERED: 1
+      DNSR_CONFIG: test7_1.yml
+    volumes:
+      - ../../data:/data
+      - ./dnsr:/app
+
+  dnsr2:
+    build: 
+      context: ./dnsr/
+    ports:
+      - 53535/udp
+    environment:
+      PYTHONUNBUFFERED: 1
+      DNSR_CONFIG: test7_2.yml
+    volumes:
+      - ../../data:/data
+      - ./dnsr:/app
+
+  dnsr3:
+    build: 
+      context: ./dnsr/
+    ports:
+      - 53535/udp
+    environment:
+      PYTHONUNBUFFERED: 1
+      DNSR_CONFIG: test7_3.yml
+    volumes:
+      - ../../data:/data
+      - ./dnsr:/app
+
+  dnsr4:
+    build: 
+      context: ./dnsr/
+    ports:
+      - 53535/udp
+    environment:
+      PYTHONUNBUFFERED: 1
+      DNSR_CONFIG: test7_4.yml
+    volumes:
+      - ../../data:/data
+      - ./dnsr:/app
+    depends_on:
+      - pdns_recursor
+    links:
+      - pdns_recursor
+
+  scanner:
+    build: 
+      context: ./scanner/
+      dockerfile: Dockerfile
+    environment:
+      PYTHONUNBUFFERED: 1
+      SCANNER_CONFIG: test7.yml
+    volumes:
+      - ../../data:/data
+      - ./scanner:/app
+    depends_on:
+      - dnsr1
+      - dnsr2
+      - dnsr3
+      - dnsr4
+    links:
+      - dnsr1
+      - dnsr2
+      - dnsr3
+      - dnsr4
+
+  pdns_recursor:
+    image: pschiffe/pdns-recursor
+    ports:
+      - 53535:53/udp
+    #   - 5301:53/tcp
+    environment:
+      PDNS_local_address: 0.0.0.0
+      PDNS_allow_from: 0.0.0.0/0
+      # PDNS_dnssec: validate

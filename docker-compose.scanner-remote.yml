@@ -1,0 +1,14 @@
+version: '3.7'
+
+services:
+
+  scanner:
+    build: 
+      context: ./scanner/
+      dockerfile: Dockerfile
+    environment:
+      PYTHONUNBUFFERED: 1
+      SCANNER_CONFIG: test2.yml
+    volumes:
+      - ../../data:/data
+      - ./scanner:/app

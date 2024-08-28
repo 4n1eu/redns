@@ -1,0 +1,14 @@
+---
+  LISTEN_HOST: 0.0.0.0
+  LISTEN_PORT: 5353
+  LOGS_FOLDER: /data/dnsr/
+  
+  PROXY_CLASS: SimpleDNSRequestHandler
+  DEFAULT_DNS_SERVER: 9.9.9.9:53
+  UPSTREAM_SERVERS: 
+    - 8.8.8.8:53
+    - 1.1.1.1:53
+    - 8.8.4.4:53
+
+  QUERY_TIMEOUT: 2
+  QUERY_RETRIES: 3
