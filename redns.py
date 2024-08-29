@@ -5,11 +5,9 @@ import dns.query
 import dns.rrset
 
 import json
-from collections import Counter
+from typing import Callable
 
-from resolver import resolve_domain
-
-me = ("127.0.0.1", 53535)
+from resolver import resolve_domain as resolve
 
 class BaseDNSRequestHandler(socketserver.DatagramRequestHandler):
 	def handle_request(self, dns_req, *args, **kwargs):
@@ -18,10 +16,7 @@ class BaseDNSRequestHandler(socketserver.DatagramRequestHandler):
 	
 	def handle(self):
 		data = self.request[0]
-		print(data)
 		req = dns.message.from_wire(wire=data, question_only=True, ignore_trailing=True, one_rr_per_rrset=True)
-		print(req)
-		print("")
 
 		try:
 			response = self.handle_request(req)
@@ -32,21 +27,30 @@ class BaseDNSRequestHandler(socketserver.DatagramRequestHandler):
 class SimpleDNSRequestHandler(BaseDNSRequestHandler):
 	def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
 		msg = dns.message.make_response(dns_req, **kwargs)
-		print()
-		print(msg)
 		# maybe todo: support multiple rrsets
 		rrset = dns_req.question[0]
 
-		print("")
-		ans = resolve_domain(rrset.name, rrset.rdtype)
-		print(ans)
+		ans = resolve(rrset.name, rrset.rdtype)
 		if ans:
 			msg.answer = ans
-			print(msg)
 		return msg
 	
+class CustomDNSRequestHandler(BaseDNSRequestHandler):
+	customAlgorithm = staticmethod(resolve)
 
+	def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
+		msg = dns.message.make_response(dns_req, **kwargs)
+		# todo: support multiple rrsets
+		rrset = dns_req.question[0]
 
-if __name__ == "__main__":
-	dnsserver = socketserver.ThreadingUDPServer(me, SimpleDNSRequestHandler)
+		ans = self.customAlgorithm(rrset.name, rrset.rdtype)
+		if ans:
+			msg.answer = ans
+		return msg
+
+def start(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, str], any]=resolve):
+	dnsserver = socketserver.ThreadingUDPServer((ip, port), CustomDNSRequestHandler)
+	dnsserver.RequestHandlerClass.customAlgorithm = staticmethod(algorithm)
+	print(f"your dns resolver is now available on {ip}:{port}")
 	dnsserver.serve_forever()
+	return dnsserver
