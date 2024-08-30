@@ -4,9 +4,8 @@ import dns.rrset
 import dns.exception
 import dns.rdatatype
 
-import json
 
-def resolve_domain(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retries=1):
+def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retries=1):
 
     if ":" in nameserver:
         nameserver_host, nameserver_port = nameserver.split(":")
@@ -28,13 +27,5 @@ def resolve_domain(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2
         return 0
     else:
         return resp.answer
-
-
-
-if __name__ == "__main__":
-    x = resolve_domain("4n1.eu", "txt", "127.0.0.1:53535")
-    if not x:
-        print(0)
-        exit()
-    for y in x:
-        print(y)
+	
+resolve("4n1.dev","txt","127.0.0.1:53553")

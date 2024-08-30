@@ -3,9 +3,9 @@ import dns.rrset
 
 majVoteThreshold = 0.5
 
-def find_rrset_in_list(rrSet1: dns.rrset.RRset, rrSets):
+def find_rrset_in_list(rrSet1: dns.rrset.RRset, rrSets: dns.rrset.RRset):
     for i, rrSet2 in enumerate(rrSets):
-        if rrSet1.full_match(rrSet2.name, rrSet2.rdclass, rrSet2.rdtype, rrSet2.covers, rrSet2.deleting) and rrSet1[0] == rrSet2[0]: # rrSetX[0] müsste funktionieren, da one_rr_per_rrset=True
+        if redns.isEqualRR(rrSet1, rrSet2):
             return i
     return -1
 
