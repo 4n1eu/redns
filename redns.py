@@ -10,7 +10,7 @@ import json
 from typing import Callable
 
 
-def isEqualRR(rrSet1: dns.rrset.RRset, rrSet2: dns.rrset.RRset):
+def  isEqualRR(rrSet1: dns.rrset.RRset, rrSet2: dns.rrset.RRset):
     # rrSetX[0] müsste funktionieren, da one_rr_per_rrset=True
     return rrSet1.full_match(rrSet2.name, rrSet2.rdclass, rrSet2.rdtype, rrSet2.covers, rrSet2.deleting) and rrSet1[0] == rrSet2[0]
 
@@ -37,12 +37,11 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retri
     else:
         return resp.answer
 	
-class CustomDNSRequestHandler(socketserver.DatagramRequestHandler):
+class CustomDNSRequestHandlerUDP(socketserver.DatagramRequestHandler):
 	customAlgorithm = staticmethod(resolve)
-      
+    
 	def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
 		msg = dns.message.make_response(dns_req, **kwargs)
-		# todo: support multiple rrsets
 		rrset = dns_req.question[0]
 
 		ans = self.customAlgorithm(rrset.name, rrset.rdtype)
@@ -60,15 +59,47 @@ class CustomDNSRequestHandler(socketserver.DatagramRequestHandler):
 		except Exception as e:
 			print(f"Error for request: {json.dumps({'id': str(req.id), 'question': str(req.question), 'error': str(e)})}")
 
+class CustomDNSRequestHandlerTCP(socketserver.StreamRequestHandler):
+	customAlgorithm = staticmethod(resolve)
+      
+	def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
+		msg = dns.message.make_response(dns_req, **kwargs)
+		rrset = dns_req.question[0]
 
+		ans = self.customAlgorithm(rrset.name, rrset.rdtype)
+		if ans:
+			msg.answer = ans
+		return msg
+
+	def handle(self):
+		data = self.request[0]
+		print(data)
+		req = dns.message.from_wire(wire=data, question_only=True, one_rr_per_rrset=True)
+
+		try:
+			response = self.handle_request(req)
+			return self.wfile.write(response.to_wire())
+		except Exception as e:
+			print(f"Error for request: {json.dumps({'id': str(req.id), 'question': str(req.question), 'error': str(e)})}")
+      
 
 def start(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve):
-	dnsserver = socketserver.ThreadingUDPServer((ip, port), CustomDNSRequestHandler)
+	udpserver = start_udp(ip, port, algorithm)
+	return udpserver
+
+def start_udp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve):
+	dnsserver = socketserver.ThreadingUDPServer((ip, port), CustomDNSRequestHandlerUDP)
 	dnsserver.RequestHandlerClass.customAlgorithm = staticmethod(algorithm)
 	print(f"reDNS is now available on {ip}:{port}")
 	dnsserver.serve_forever()
 	return dnsserver
 
+def start_tcp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve):
+	dnsserver = socketserver.ThreadingTCPServer((ip, port), CustomDNSRequestHandlerTCP)
+	dnsserver.RequestHandlerClass.customAlgorithm = staticmethod(algorithm)
+	print(f"reDNS is now available on {ip}:{port}")
+	dnsserver.serve_forever()
+	return dnsserver
 
 if __name__ == "__main__":
-    start()
+    start(port=8444)

@@ -18,7 +18,7 @@ def majVote(domain, rtype):
 
     for ns in ns_list:
         print(ns)
-        ans = redns.resolve(domain, rtype, ns)
+        ans = redns.resolve(domain, rtype, ns, timeout=4, retries=2)
         if not ans:
             continue
 
@@ -40,4 +40,4 @@ def majVote(domain, rtype):
     return answer
 
 
-redns.start(algorithm=majVote)
+redns.start(algorithm=majVote, port=53335)

@@ -4,6 +4,8 @@ import dns.rrset
 import dns.exception
 import dns.rdatatype
 
+import json
+
 
 def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retries=1):
 
@@ -15,7 +17,7 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retri
 
     try:
         dns_req = dns.message.make_query(domain, rtype)
-        resp, wasTCP = dns.query.udp_with_fallback(dns_req, where=nameserver_host, port=int(nameserver_port), timeout=timeout, one_rr_per_rrset=True)
+        resp = dns.query.tcp(dns_req, where=nameserver_host, port=int(nameserver_port), timeout=timeout, one_rr_per_rrset=True)
     except Exception as e:
         print(f"Error for request: {json.dumps({'error': str(e)})}")
         return 0
@@ -27,5 +29,7 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retri
         return 0
     else:
         return resp.answer
-	
-resolve("4n1.dev","txt","127.0.0.1:53553")
+
+
+
+print(resolve("4n1.dev","txt","127.0.0.1:8444"))
