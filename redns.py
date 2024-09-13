@@ -6,11 +6,15 @@ import dns.rrset
 import dns.exception
 import dns.rdatatype
 
+import threading
+import signal
+import atexit
+
 import json
-from typing import Callable
+from typing import Callable, Optional
 
 
-def  isEqualRR(rrSet1: dns.rrset.RRset, rrSet2: dns.rrset.RRset):
+def isEqualRR(rrSet1: dns.rrset.RRset, rrSet2: dns.rrset.RRset):
     # rrSetX[0] müsste funktionieren, da one_rr_per_rrset=True
     return rrSet1.full_match(rrSet2.name, rrSet2.rdclass, rrSet2.rdtype, rrSet2.covers, rrSet2.deleting) and rrSet1[0] == rrSet2[0]
 
@@ -42,6 +46,7 @@ class CustomDNSRequestHandlerUDP(socketserver.DatagramRequestHandler):
     
 	def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
 		msg = dns.message.make_response(dns_req, **kwargs)
+		
 		rrset = dns_req.question[0]
 
 		ans = self.customAlgorithm(rrset.name, rrset.rdtype)
@@ -81,25 +86,52 @@ class CustomDNSRequestHandlerTCP(socketserver.StreamRequestHandler):
 			return self.wfile.write(response.to_wire())
 		except Exception as e:
 			print(f"Error for request: {json.dumps({'id': str(req.id), 'question': str(req.question), 'error': str(e)})}")
-      
 
-def start(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve):
-	udpserver = start_udp(ip, port, algorithm)
-	return udpserver
 
-def start_udp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve):
+serverlist = []
+
+def start(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, options:Optional[any]=None):
+	udpserver = start_udp(ip, port, algorithm, options)
+	tcpserver = start_tcp(ip, port, algorithm, options)
+	return (udpserver, tcpserver)
+
+def start_udp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, options:Optional[any]=None):
 	dnsserver = socketserver.ThreadingUDPServer((ip, port), CustomDNSRequestHandlerUDP)
 	dnsserver.RequestHandlerClass.customAlgorithm = staticmethod(algorithm)
-	print(f"reDNS is now available on {ip}:{port}")
-	dnsserver.serve_forever()
+	thread = threading.Thread(target=dnsserver.serve_forever)
+	thread.start()
+	serverlist.append(dnsserver)
+	print(f"reDNS (UDP) is now available on {ip}:{port}")
 	return dnsserver
 
-def start_tcp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve):
+def start_tcp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, options:Optional[any]=None):
 	dnsserver = socketserver.ThreadingTCPServer((ip, port), CustomDNSRequestHandlerTCP)
 	dnsserver.RequestHandlerClass.customAlgorithm = staticmethod(algorithm)
-	print(f"reDNS is now available on {ip}:{port}")
-	dnsserver.serve_forever()
+	thread = threading.Thread(target=dnsserver.serve_forever)
+	thread.start()
+	serverlist.append(dnsserver)
+	print(f"reDNS (TCP) is now available on {ip}:{port}")
 	return dnsserver
+
+def stop(server):
+	try:
+		server.shutdown()
+		serverlist.remove(server)
+		print("stopped server!")
+	except:
+		print("error when stopping server")
+
+def handle_exit(*args):
+	x = []
+	for y in serverlist:
+		x.append(y)
+	print()
+	for server in x:
+		stop(server)
+
+atexit.register(handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
+signal.signal(signal.SIGINT, handle_exit)
 
 if __name__ == "__main__":
     start(port=8444)

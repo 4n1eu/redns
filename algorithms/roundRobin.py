@@ -1,7 +1,9 @@
 import redns
 import nameservers
 
-ns = nameservers.get("ns1.yaml")
+ns = nameservers.get("ns1")
+
+print(ns)
 
 def roundRobin(domain, rtype):
     print("using nameserver ",ns[0])

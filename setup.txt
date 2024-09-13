@@ -1,0 +1,6 @@
+pip:
+- dnspython
+- cryptography
+
+export PYTHONPATH=/home/m/Dokumente/uni/BA/dnsr
+(bei mir ist es in ~/.bashrc)
