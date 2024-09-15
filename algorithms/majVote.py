@@ -1,7 +1,7 @@
 import redns
 import dns.rrset
+import nameservers
 
-majVoteThreshold = 0.5
 
 def find_rrset_in_list(rrSet1: dns.rrset.RRset, rrSets: dns.rrset.RRset):
     for i, rrSet2 in enumerate(rrSets):
@@ -9,16 +9,22 @@ def find_rrset_in_list(rrSet1: dns.rrset.RRset, rrSets: dns.rrset.RRset):
             return i
     return -1
 
-def majVote(domain, rtype):
+def majVote(domain, rtype, opt={}):
+
+    redns.stdOptions(opt, {
+        'ns_list': nameservers.get('ns1'),
+        'timeout': 2,
+        'retries': 1,
+        'majThreshold': 0.5
+    })
+
     rrSets: list[dns.rrset.RRset] = []
     rrSetCounts = {}
 
-    ns_list = ["1.1.1.1", "8.8.8.8", "9.9.9.9"]
-    ns_count = len(ns_list)
-
-    for ns in ns_list:
+    for ns in opt['ns_list']:
         print(ns)
-        ans = redns.resolve(domain, rtype, ns, timeout=4, retries=2)
+        ans = redns.resolve(domain, rtype, ns, opt['timeout'], opt['retries'])
+
         if not ans:
             continue
 
@@ -34,7 +40,7 @@ def majVote(domain, rtype):
 
     answer = []
     for i, rrSet in enumerate(rrSets):
-        if (rrSetCounts.get(i) >= ns_count*majVoteThreshold):
+        if (rrSetCounts.get(i) >= len(opt['ns_list'])*opt['majThreshold']):
             answer.append(rrSet)
 
     return answer

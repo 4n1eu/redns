@@ -7,7 +7,7 @@ import dns.rdatatype
 import json
 
 
-def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retries=1):
+def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2):
 
     if ":" in nameserver:
         nameserver_host, nameserver_port = nameserver.split(":")
@@ -32,4 +32,4 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retri
 
 
 
-print(resolve("4n1.dev","txt","127.0.0.1:8444"))
+print(resolve("4n1.dev","txt","127.0.0.1:8445"))
