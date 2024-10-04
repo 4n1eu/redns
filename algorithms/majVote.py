@@ -2,7 +2,8 @@ import redns
 import dns.rrset
 import nameservers
 import logging
-import json
+import concurrent.futures
+import time
 
 log = logging.getLogger('redns.majvote')
 
@@ -30,22 +31,27 @@ def majVote(domain, rtype, opt={
     rrSets: list[dns.rrset.RRset] = []
     rrSetCounts = {}
 
-    for ns in opt['ns_list']:
-        print(ns)
-        ans = redns.resolve(domain, rtype, ns, opt['timeout'], opt['retries'])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = []
+        for ns in opt["ns_list"]:
+            print("ns")
+            futures.append(executor.submit(redns.resolve, domain, rtype, ns, opt['timeout'], opt['retries']))
+        print(3)
+        for future in futures:
+            ans = future.result()
 
-        if not ans:
-            continue
+            if not ans:
+                continue
 
-        for rrAns in ans:
-            print(rrAns)
-            i = find_rrset_in_list(rrAns, rrSets)
-            if (i==-1): # rrset is new
-                rrSetCounts.update({len(rrSets): 1})
-                rrSets.append(rrAns)
-            else: # rrset already exists
-                rrSetCounts.update({i: rrSetCounts.get(i) + 1})
-                rrSets[i].update_ttl(min(rrSets[i].ttl, rrAns.ttl))
+            for rrAns in ans:
+                print(rrAns)
+                i = find_rrset_in_list(rrAns, rrSets)
+                if (i==-1): # rrset is new
+                    rrSetCounts.update({len(rrSets): 1})
+                    rrSets.append(rrAns)
+                else: # rrset already exists
+                    rrSetCounts.update({i: rrSetCounts.get(i) + 1})
+                    rrSets[i].update_ttl(min(rrSets[i].ttl, rrAns.ttl))
 
     answer = []
     

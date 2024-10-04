@@ -15,6 +15,10 @@ import logging
 from typing import Callable, Optional # technically typing.callable is deprecated
 import inspect
 
+# neccessary because of https://stackoverflow.com/a/75379243/11030358
+import concurrent.futures
+thread_pool_ref = concurrent.futures.ThreadPoolExecutor
+
 log_formatter = logging.Formatter("%(asctime)s.%(msecs)06d: %(message)s",
                               "%Y-%m-%d %H:%M:%S")
 log = logging.getLogger('redns')
@@ -62,12 +66,12 @@ def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
 		for o in param.default:
 			if o not in opt:
 				opt[o] = param.default[o]
-
+	print(1)
 	if (has_options):
 		ans = self.customAlgorithm(rrset.name, rrset.rdtype, opt=opt)
 	else:
 		ans = self.customAlgorithm(rrset.name, rrset.rdtype)
-	
+	print(2)
 	if ans:
 		msg.answer = ans
 	return msg
@@ -99,7 +103,7 @@ class DNSHandlerTCP(socketserver.StreamRequestHandler):
 
 serverlist = []
 
-def start(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}, udp:bool=True, tcp:bool=True):
+def start(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[dict]={}, udp:bool=True, tcp:bool=True):
 	if udp: udpserver = start_udp(ip, port, algorithm, opt)
 	if tcp: tcpserver = start_tcp(ip, port, algorithm, opt)
 
@@ -108,7 +112,7 @@ def start(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdata
 	if udp: return udpserver
 	log.warning("starting a server requires at least one of tcp, udp to be set to True")
 
-def start_udp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}):
+def start_udp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[dict]={}):
 
 	log.debug(f"UDP Server is starting")
 	try:
@@ -123,7 +127,7 @@ def start_udp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.r
 	except Exception as e:
 		log.error(f"Couldn't start UDP Server: {e}")
 
-def start_tcp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}):
+def start_tcp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[dict]={}):
 	log.debug(f"TCP Server is starting")
 	try:
 		dnsserver = socketserver.TCPServer((ip, port), DNSHandlerTCP)
