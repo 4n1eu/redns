@@ -22,6 +22,11 @@ log.setLevel(getattr(logging, 'INFO'))
 log_fhandler = logging.FileHandler("log/redns.log")
 log_fhandler.setFormatter(log_formatter)
 log.addHandler(log_fhandler)
+
+def error(txt):
+	log.error(txt)
+	print("ERROR: " + txt)
+
 def isEqualRR(rrSet1: dns.rrset.RRset, rrSet2: dns.rrset.RRset):
     # rrSetX[0] müsste funktionieren, da one_rr_per_rrset=True
     return rrSet1.full_match(rrSet2.name, rrSet2.rdclass, rrSet2.rdtype, rrSet2.covers, rrSet2.deleting) and rrSet1[0] == rrSet2[0]
@@ -32,14 +37,22 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retri
     else:
         ns_ip = nameserver
         ns_port = 53
+		
+    useDnssec = True
 
     try:
-        dns_req = dns.message.make_query(domain, rtype)
+        if useDnssec:
+            dns_req = dns.message.make_query(domain, rtype, use_edns=True, want_dnssec=True)
+        else:
+            dns_req = dns.message.make_query(domain, rtype)
+        
+        print(dns_req, "\n")
         resp, wasTCP = dns.query.udp_with_fallback(dns_req, where=ns_ip, port=int(ns_port), timeout=timeout, one_rr_per_rrset=True)
     except Exception as e:
         print(f"Error for request: {json.dumps({'error': str(e)})}")
         return 0
     
+    print(resp)
     # answer is a list of rrsets
     # rrset is a set containing the resource records
     if not resp or not resp.answer:
@@ -63,10 +76,14 @@ def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
 			if o not in opt:
 				opt[o] = param.default[o]
 
-	if (has_options):
-		ans = self.customAlgorithm(rrset.name, rrset.rdtype, opt=opt)
-	else:
-		ans = self.customAlgorithm(rrset.name, rrset.rdtype)
+	try:
+		if (has_options):
+			ans = self.customAlgorithm(rrset.name, rrset.rdtype, opt=opt)
+		else:
+			ans = self.customAlgorithm(rrset.name, rrset.rdtype)
+	except Exception as e:
+		error("exception in custom Algorithm: " + str(e))
+		ans = 0
 	
 	if ans:
 		msg.answer = ans
@@ -82,7 +99,7 @@ class DNSHandlerUDP(socketserver.DatagramRequestHandler):
 			response = handle_request(self, req)
 			return self.wfile.write(response.to_wire())
 		except Exception as e:
-			print(f"Error for udp request: {json.dumps({'id': str(req.id), 'question': str(req.question), 'error': str(e)})}")
+			error(f"Error for udp request: {json.dumps({'id': str(req.id), 'question': str(req.question), 'error': str(e)})}")
 
 class DNSHandlerTCP(socketserver.StreamRequestHandler):
 	customAlgorithm = staticmethod(resolve)
@@ -94,8 +111,8 @@ class DNSHandlerTCP(socketserver.StreamRequestHandler):
 			response = handle_request(self, req)
 			return dns.query.send_tcp(self.request, response)
 		except Exception as e:
-			print(f"Error for tcp request: {json.dumps({'id': str(req.id), 'question': str(req.question), 'error': str(e)})}")
-
+			error(f"Error for tcp request: {json.dumps({'id': str(req.id), 'question': str(req.question), 'error': str(e)})}")
+ 
 
 serverlist = []
 
@@ -143,9 +160,9 @@ def stop(server):
 		server.shutdown()
 		serverlist.remove(server)
 		if (server.socket_type == 1):
-			print("Stopped TCP server.")
+			log.info("Stopped TCP server.")
 		else:
-			print("Stopped UDP server.")
+			log.info("Stopped UDP server.")
 	except:
 		print("error while stopping server")
 
