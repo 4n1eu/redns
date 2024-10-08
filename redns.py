@@ -6,6 +6,8 @@ import dns.rrset
 import dns.exception
 import dns.rdatatype
 import dns.dnssec
+import dns.resolver
+import dns.name
 
 import threading
 import signal
@@ -46,19 +48,65 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retri
         else:
             dns_req = dns.message.make_query(domain, rtype)
         
-        print(dns_req, "\n")
+        #print(dns_req, "\n")
         resp, wasTCP = dns.query.udp_with_fallback(dns_req, where=ns_ip, port=int(ns_port), timeout=timeout, one_rr_per_rrset=True)
     except Exception as e:
-        print(f"Error for request: {json.dumps({'error': str(e)})}")
+        log.warning(f"Error for request: {json.dumps({'error': str(e)})}")
         return 0
     
-    print(resp)
+    #print(resp)
     # answer is a list of rrsets
     # rrset is a set containing the resource records
     if not resp or not resp.answer:
         return 0
     else:
         return resp.answer
+
+def validateDnssec(dnsresolver, domain_name):
+	# based on https://github.com/suresync/checkdnssec/blob/master/checkdnssec.py
+	# which is based on https://stackoverflow.com/a/26137120
+
+
+    # get the primarynameservers for the target domain
+    response = dnsresolver.query(domain_name, dns.rdatatype.NS)
+    nsname = response.rrset[0] # name
+    try:
+        response = dnsresolver.query(str(nsname), dns.rdatatype.A)
+    except:
+        raise Exception("timeout")
+    nsaddr = response.rrset[0].to_text() # IPv4
+
+    # get the DNSKEY for the zone
+    request = dns.message.make_query(domain_name,
+                                     dns.rdatatype.DNSKEY,
+                                     want_dnssec=True)
+
+    # send the query
+    response = dns.query.udp(request,nsaddr,timeout=1.0)
+    if response.rcode() != 0:
+        raise Exception("get_dnssec_status: rcode was not 0")
+    # the answer should contain both DNSKEY and RRSIG(DNSKEY)
+
+    answer = response.answer
+    if len(answer) != 2:
+        # an exception was raised
+        raise Exception("get_dnssec_status: lenght of answer != 2, " +
+                        str(len(answer)))
+
+    # validate the DNSKEY signature
+    name = dns.name.from_text(domain_name)
+
+    try:
+        dns.dnssec.validate(answer[0],answer[1],{name:answer[0]})
+    except dns.dnssec.ValidationFailure:
+        # an exception was raised
+        raise Exception("get_dnssec_status: Failed validation.")
+
+    else:
+        # valid DNSSEC signature found
+        return
+
+
 
 
 def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
@@ -164,7 +212,7 @@ def stop(server):
 		else:
 			log.info("Stopped UDP server.")
 	except:
-		print("error while stopping server")
+		error("error while stopping server")
 
 def handle_exit(*args):
 	servers = []

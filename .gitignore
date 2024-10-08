@@ -1,4 +1,3 @@
 *__pycache__
 __pycache__
-log/redns.log
-log/majVote.log
+log/*
