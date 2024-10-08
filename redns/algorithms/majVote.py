@@ -44,13 +44,12 @@ def majVote(domain, rtype, opt={
     for t in threads:
         t.join()
 
-    log2.debug(f"beginn voting for '{domain} IN {rtype}'")
     for i, ans in enumerate(results):
         if not ans:
             continue
-        log2.debug(f"result for '{domain} IN {rtype}' by {opt["ns_list"][i]}")
+
+        log2.debug(f"'{domain} IN {rtype}': result {i+1}/{ns_len} by {opt["ns_list"][i]} ready: {ans}")
         for rrAns in ans:
-            log2.debug(rrAns)
 
             i = find_rrset_in_list(rrAns, rrSets)
             if (i==-1): # rrset is new
@@ -62,14 +61,13 @@ def majVote(domain, rtype, opt={
 
     answer = []
     
-    log2.debug(f"final result for '{domain} IN {rtype}':")
     for i, rrSet in enumerate(rrSets):
         if (rrSetCounts.get(i) >= len(opt['ns_list'])*opt['majThreshold']):
             answer.append(rrSet)
-            log2.debug(rrSet)
+    log2.debug(f"'{domain} IN {rtype}': final result is: {answer}")
     for rrSet in rrSets:
         if (rrSetCounts.get(i) < ns_len):
-            log2.debug(f"MajVote actually did something for '{domain} IN {rtype}'!")
+            log2.debug(f"'{domain} IN {rtype}': MajVote actually did something!")
             break
 
     return answer

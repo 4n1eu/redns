@@ -191,7 +191,7 @@ def start_udp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.r
 def start_tcp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}):
 	log.debug(f"TCP Server is starting")
 	try:
-		dnsserver = socketserver.TCPServer((ip, port), DNSHandlerTCP)
+		dnsserver = socketserver.ThreadingTCPServer((ip, port), DNSHandlerTCP)
 		dnsserver.RequestHandlerClass.customAlgorithm = staticmethod(algorithm)
 		dnsserver.RequestHandlerClass.customOptions = opt
 		thread = threading.Thread(target=dnsserver.serve_forever)

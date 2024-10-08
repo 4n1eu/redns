@@ -24,7 +24,7 @@ def roundRobin(domain, rtype):
     usens = getns()
     res = redns.resolve(domain, rtype, nameserver=usens, timeout=2, retries=2)
     if res:
-        log2.debug(f"valid response for '{domain} IN {rtype}' from {usens}")
+        log2.debug(f"valid response for '{domain} IN {rtype}' from {usens}: {res}")
     else:
         log2.debug(f"got empty / no response for '{domain} IN {rtype}' from {usens}")
     return res
