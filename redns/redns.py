@@ -110,6 +110,7 @@ def validateDnssec(dnsresolver, domain_name):
 
 
 def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
+	log.info("handling new dns request")
 	msg = dns.message.make_response(dns_req, **kwargs)
 	rrset = dns_req.question[0]
 

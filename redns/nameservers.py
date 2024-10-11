@@ -1,11 +1,8 @@
-import yaml
-
-def get(file):
+def get(file, max=10):
     try:
-        return yaml.safe_load(open(file))
+        file = open(file, 'r')
     except:
-        pass
-    try:
-        return yaml.safe_load(open(file+".yaml"))
-    except:
-        return yaml.safe_load(open(file+".yml"))
+        file = open("ns/"+file, 'r')
+    res = file.read().rstrip('\n').split('\n')[0:max]
+    file.close()
+    return res

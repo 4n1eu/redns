@@ -1,5 +1,6 @@
 import redns
 import dns.rrset
+import dns.rdatatype
 import nameservers
 import logging
 import json
@@ -15,61 +16,85 @@ log2_fhandler = logging.FileHandler("log/majVote.log")
 log2_fhandler.setFormatter(log2_formatter)
 log2.addHandler(log2_fhandler)
 
-def find_rrset_in_list(rrSet1: dns.rrset.RRset, rrSets: dns.rrset.RRset):
+#returns index if found, -1 if not found
+def find_rrset_in_list(rrSet1: dns.rrset.RRset, rrSets: list[dns.rrset.RRset]):
     for i, rrSet2 in enumerate(rrSets):
         if redns.isEqualRR(rrSet1, rrSet2):
             return i
     return -1
 
-def singleResolve(results, i, domain, rtype, ns, timeout, retries):
+def resolveStoreResult(results, i, domain, rtype, ns, timeout, retries):
     results[i] = redns.resolve(domain, rtype, ns, timeout, retries)
+
+def vote_winner(rrSets, rrSetCounts:list, opt):
+    answer = []
+    winnercount = max(rrSetCounts)
+
+    for i,rrset in enumerate(rrSets):
+        if rrSetCounts[i] == winnercount:
+            answer.append(rrset)
+    return answer
+
+
+
+def vote_majority(rrSets, rrSetCounts, opt):
+    answer = []
+    
+    for i, rrSet in enumerate(rrSets):
+        if (rrSetCounts[i] >= len(opt['ns_list'])*opt['majThreshold']):
+            answer.append(rrSet)
+
+    return answer
 
 def majVote(domain, rtype, opt={
         'ns_list': nameservers.get('ns1'),
         'timeout': 2,
         'retries': 1,
-        'majThreshold': 0.5
+        'majThreshold': 0.5,
+        'weightMultiple': True, # when one ns returns n rrsets, weight them 1/n
+        'voteWinnerWhenReasonable': True,
+        'alwaysVoteWinner': False
     }):
 
-    rrSets: list[dns.rrset.RRset] = []
-    rrSetCounts = {}
+    if type(rtype)!=str: rtype = dns.rdatatype.to_text(rtype)
 
-    
-    ns_len = len(opt["ns_list"])
-    results = [None]*ns_len
-    threads = [None]*ns_len
+    results = [None] * len(opt["ns_list"])
+    threads = []
     for i, ns in enumerate(opt['ns_list']):
-        threads[i] = threading.Thread(target=singleResolve, args=[results, i, domain, rtype, ns, opt['timeout'], opt['retries']])
-        threads[i].start()
-    for t in threads:
-        t.join()
+        threads.append(threading.Thread(target=resolveStoreResult, args=[results, i, domain, rtype, ns, opt['timeout'], opt['retries']]))
+        threads[-1].start()
+    for thread in threads:
+        thread.join()
 
+    rrSets: list[dns.rrset.RRset] = []
+    rrSetCounts = []
+
+    # combine results and store the amounts of different rrsets
     for i, ans in enumerate(results):
-        if not ans:
-            continue
+        if not ans: continue
+        ns = opt["ns_list"][i]
+        log2.debug(f"'{domain} IN {rtype}': result {i+1}/{len(results)} by {ns+" "*(16-len(ns))} ready: {ans}")
 
-        log2.debug(f"'{domain} IN {rtype}': result {i+1}/{ns_len} by {opt["ns_list"][i]} ready: {ans}")
+        weight = 1/len(ans) if opt['weightMultiple'] else 1 
+
         for rrAns in ans:
-
             i = find_rrset_in_list(rrAns, rrSets)
-            if (i==-1): # rrset is new
-                rrSetCounts.update({len(rrSets): 1})
+            if (i==-1):
+                rrSetCounts.append(weight)
                 rrSets.append(rrAns)
-            else: # rrset already exists
-                rrSetCounts.update({i: rrSetCounts.get(i) + 1})
+            else:
+                rrSetCounts[i] = rrSetCounts[i] + weight
                 rrSets[i].update_ttl(min(rrSets[i].ttl, rrAns.ttl))
 
-    answer = []
-    
-    for i, rrSet in enumerate(rrSets):
-        if (rrSetCounts.get(i) >= len(opt['ns_list'])*opt['majThreshold']):
-            answer.append(rrSet)
-    log2.debug(f"'{domain} IN {rtype}': final result is: {answer}")
-    for rrSet in rrSets:
-        if (rrSetCounts.get(i) < ns_len):
-            log2.debug(f"'{domain} IN {rtype}': MajVote actually did something!")
-            break
+    if opt['alwaysVoteWinner']:
+        answer = vote_winner(rrSets, rrSetCounts, opt)
+    elif opt['voteWinnerWhenReasonable']:
+        answer = vote_majority(rrSets, rrSetCounts, opt)
+        if len(answer)==0: answer = vote_winner(rrSets, rrSetCounts, opt)
+    else:
+        answer = vote_majority(rrSets, rrSetCounts, opt)
 
+    log2.debug(f"'{domain} IN {rtype}': final result is: {answer}")
     return answer
 
 
