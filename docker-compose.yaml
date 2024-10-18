@@ -1,0 +1,9 @@
+services:
+  redns:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    ports:
+      - "53535:53535/tcp"
+      - "53535:53535/udp"
+

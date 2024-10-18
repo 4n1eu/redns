@@ -5,9 +5,9 @@ import threading
 import nameservers
 
 
-scannercount = 3
+scannercount = 3 # num of threads
 domains = nameservers.get('domains1')
-scaninterval = 0 # in seconds, per thread
+scaninterval = 0.1 # in seconds, per thread
 ns = nameservers.get('ns2')
 me = "127.0.0.1:53535"
 

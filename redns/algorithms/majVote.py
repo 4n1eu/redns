@@ -99,5 +99,5 @@ def majVote(domain, rtype, opt={
 
 
 if __name__ == "__main__":
-    redns.start(algorithm=majVote, port=53535)
+    redns.start(algorithm=majVote, port=53535, ip="0.0.0.0")
     log.info("majVote wurde gestartet")
