@@ -30,10 +30,11 @@ def roundRobin(domain, rtpye):
     global portindex
     port = majVoterPortlist[portindex]
     portindex = (portindex+1)%majvoterCount
-    return redns.resolve(domain, rtpye, ns=f"127.0.0.1:{port}")
+    return redns.resolve(domain, rtpye, ns=f"0.0.0.0:{port}")
 
 a,b = redns.start(ip="0.0.0.0", port=rrPort, algorithm=roundRobin)
 if a and b:
     print(f"The round robin majority Voter is now available on port {rrPort}")
 else:
     print("error starting main server")
+    

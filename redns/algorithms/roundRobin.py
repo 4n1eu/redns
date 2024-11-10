@@ -31,4 +31,4 @@ def roundRobin(domain, rtype):
 
 
 if __name__ == "__main__":
-    redns.start(ip="127.0.0.1", port=53535, algorithm=roundRobin)
+    redns.start(port=53535, algorithm=roundRobin)

@@ -41,7 +41,7 @@ def vote_majority(rrSets, rrSetCounts, opt):
     answer = []
     
     for i, rrSet in enumerate(rrSets):
-        if (rrSetCounts[i] >= len(opt['ns_list'])*opt['majThreshold']):
+        if (rrSetCounts[i] > len(opt['ns_list'])*opt['majThreshold']):
             answer.append(rrSet)
 
     return answer
@@ -51,7 +51,7 @@ def majVote(domain, rtype, opt={
         'timeout': 2,
         'retries': 1,
         'majThreshold': 0.5,
-        'weightMultiple': True, # when one ns returns n rrsets, weight them 1/n
+        'weightMultiple': False, # when one ns returns n rrsets, weight them 1/n
         'voteWinnerWhenReasonable': True,
         'alwaysVoteWinner': False
     }):
@@ -69,11 +69,14 @@ def majVote(domain, rtype, opt={
     rrSets: list[dns.rrset.RRset] = []
     rrSetCounts = []
 
+    anyAnswerExists = False
+
     # combine results and store the amounts of different rrsets
     for i, ans in enumerate(results):
         if not ans: continue
+        anyAnswerExists = True
         ns = opt["ns_list"][i]
-        log2.debug(f"'{domain} IN {rtype}': result {i+1}/{len(results)} by {ns+" "*(16-len(ns))} ready: {ans}")
+        log2.debug(f"'{domain} IN {rtype}': result {i+1}/{len(results)} by {ns+' '*(16-len(ns))} ready: {ans}")
 
         weight = 1/len(ans) if opt['weightMultiple'] else 1 
 
@@ -85,6 +88,10 @@ def majVote(domain, rtype, opt={
             else:
                 rrSetCounts[i] = rrSetCounts[i] + weight
                 rrSets[i].update_ttl(min(rrSets[i].ttl, rrAns.ttl))
+
+    if not anyAnswerExists:
+        log2.debug(f"'{domain} IN {rtype}': No answers")
+        return 0
 
     if opt['alwaysVoteWinner']:
         answer = vote_winner(rrSets, rrSetCounts, opt)

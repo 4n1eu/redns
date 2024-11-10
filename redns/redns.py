@@ -40,43 +40,6 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retri
 		ns_ip = nameserver
 		ns_port = 53
 
-	dnssecSuccess = False
-
-	# dnssec handling
-	# based on https://stackoverflow.com/a/26137120
-	if useDnssec:
-		try:
-			dnsresolver = dns.resolver.Resolver()
-			dnsresolver.nameservers = [ns_ip]
-			dnsresolver.port = ns_port
-			dnsresolver.timeout = timeout
-
-			# get the DNSKEY for the zone
-			request = dns.message.make_query(domain, dns.rdatatype.DNSKEY, want_dnssec=True)
-			response = dns.query.udp(request,ns_ip,timeout=timeout)
-			if response.rcode() != 0:
-				raise Exception("get_dnssec_status: rcode was not 0")
-			# the answer should contain both DNSKEY and RRSIG(DNSKEY)
-			answer = response.answer
-			print(answer)
-			if len(answer) != 2:
-				# an exception was raised
-				raise Exception("get_dnssec_status: length of answer != 2, " + str(len(answer)))
-
-			# validate the DNSKEY signature
-			name = dns.name.from_text(domain)
-
-			try:
-				dns.dnssec.validate(answer[0],answer[1],{name:answer[0]})
-			except dns.dnssec.ValidationFailure:
-				# an exception was raised
-				raise Exception("get_dnssec_status: Failed validation.")
-			else:
-				pass # valid DNSSEC signature found
-		except:
-			print("error with dnssec handling")
-		
-
 	resp = None
 	error = None
 	for i in range(retries):
@@ -156,7 +119,7 @@ class DNSHandlerTCP(socketserver.StreamRequestHandler):
 
 serverlist = []
 
-def start(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}, udp:bool=True, tcp:bool=True):
+def start(ip:str="0.0.0.0", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}, udp:bool=True, tcp:bool=True):
 	if udp: udpserver = start_udp(ip, port, algorithm, opt)
 	if tcp: tcpserver = start_tcp(ip, port, algorithm, opt)
 
@@ -165,7 +128,7 @@ def start(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdata
 	if udp: return udpserver
 	log.warning("starting a server requires at least one of tcp, udp to be set to True")
 
-def start_udp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}):
+def start_udp(ip:str="0.0.0.0", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}):
 
 	log.debug(f"UDP Server is starting")
 	try:
@@ -181,7 +144,7 @@ def start_udp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.r
 		log.error(f"Couldn't start UDP Server: {e}")
 		return False
 
-def start_tcp(ip:str="127.0.0.1", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}):
+def start_tcp(ip:str="0.0.0.0", port:int=53535, algorithm:Callable[[str, dns.rdatatype.RdataType], any]=resolve, opt:Optional[any]={}):
 	log.debug(f"TCP Server is starting")
 	try:
 		dnsserver = socketserver.ThreadingTCPServer((ip, port), DNSHandlerTCP)
