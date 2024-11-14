@@ -1,48 +1,29 @@
 import redns
 import majVote
 import time
-import threading
+import math
 import nameservers
 
 
-scannercount = 30 # num of threads
-domains = ["redns.4n1.dev"]
-scaninterval = 0.1 # in seconds, per thread
-ns = nameservers.get('ns3', max=200)
-me = "0.0.0.0:53535"
+domain = "redns1.liar.pw"
+ns = nameservers.get('actives', max=70000)
 
+stepsize = 100
+skip = 45
+max = 15
 
-def sleepmost(interval, lasttime):
-    diff = lasttime+interval-time.time()
-    if (diff > 0):
-        time.sleep(diff)
-    return time.time()
+for i in range(math.ceil(len(ns)/stepsize)):
+    if (i<skip): continue
+    if (i>=skip+max): continue
 
-def scanner(id, scaninterval, domains):
-    lasttime = 0
-    for domain in domains:
-        lasttime = sleepmost(scaninterval, lasttime)
-        redns.resolve(domain, "A", me)
-    return
+    majVote.majVote(domain, "A", {
+        'ns_list': ns[stepsize*i:stepsize*(i+1)],
+        'timeout': 2,
+        'retries': 2,
+        'majThreshold': 0.5,
+        'weightMultiple': False,
+        'voteWinnerWhenReasonable': True,
+        'alwaysVoteWinner': False
+    })
+    print(f"\r {i+1}/{math.ceil(len(ns)/stepsize)}", end="")
 
-(a,b) = redns.start(port=int(me.split(':')[1]), algorithm=majVote.majVote, opt={
-    'ns_list': ns,
-})
-
-threads = []
-for i in range(scannercount):
-    t = threading.Thread(target=scanner, args=[i, scaninterval, domains[i:len(domains):scannercount]])
-    t.start()
-    threads.append(t)
-    
-for thread in threads:
-    thread.join()
-    
-redns.stop(a)
-redns.stop(b)
-
-# times to scan 1000 domains at home, 10 ns each, using one middle-server:
-# using 30 scanners, 0.1s interval: 47s
-# using 20 scanners, 0.1s interval: 58s
-# using 10 scanners, 0.1s interval: 76s
-# using 10 scanners, 0.01s interval: 77s

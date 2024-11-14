@@ -33,7 +33,13 @@ def isEqualRR(rrSet1: dns.rrset.RRset, rrSet2: dns.rrset.RRset):
     # rrSetX[0] müsste funktionieren, da one_rr_per_rrset=True
     return rrSet1.full_match(rrSet2.name, rrSet2.rdclass, rrSet2.rdtype, rrSet2.covers, rrSet2.deleting) and rrSet1[0] == rrSet2[0]
 
-def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retries=1, useDnssec:bool=False):
+def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=3, retries=2):
+
+	# ERROR-CODES
+	# 0 = no error
+	# 1 = no response
+	# 2 = nxdomain
+
 	if ":" in nameserver:
 		ns_ip, ns_port = nameserver.split(":")
 	else:
@@ -41,23 +47,20 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=2, retri
 		ns_port = 53
 
 	resp = None
-	error = None
 	for i in range(retries):
 		try:
-			dns_req = dns.message.make_query(domain, rtype, use_edns=useDnssec, want_dnssec=useDnssec)
+			dns_req = dns.message.make_query(domain, rtype)
 			resp, wasTCP = dns.query.udp_with_fallback(dns_req, where=ns_ip, port=int(ns_port), timeout=timeout, one_rr_per_rrset=True)
 			break
 		except Exception as e:
-			if (i==retries-1): log.warning(f"Error for request: {error}")
+			if (i==retries-1): log.warning(f"Error for request: {e}")
 			continue
-	if error:
-		return 0
 
 	#print(resp)
 	# answer is a list of rrsets
 	# rrset is a set containing the resource records
-	if not resp or not resp.answer:
-		return 0
+	if not resp:
+		return False
 	else:
 		return resp.answer
 
@@ -88,7 +91,7 @@ def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
 		error("exception in custom Algorithm: " + str(e))
 		ans = 0
 	
-	if ans:
+	if ans != False:
 		msg.answer = ans
 	return msg
 	
