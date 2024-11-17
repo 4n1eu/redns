@@ -35,11 +35,6 @@ def isEqualRR(rrSet1: dns.rrset.RRset, rrSet2: dns.rrset.RRset):
 
 def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=3, retries=2):
 
-	# ERROR-CODES
-	# 0 = no error
-	# 1 = no response
-	# 2 = nxdomain
-
 	if ":" in nameserver:
 		ns_ip, ns_port = nameserver.split(":")
 	else:

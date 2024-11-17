@@ -5,12 +5,12 @@ import math
 import nameservers
 
 
-domain = "redns1.liar.pw"
+domain = "redns6.4n1.dev"
 ns = nameservers.get('actives', max=70000)
 
 stepsize = 100
-skip = 45
-max = 15
+skip = 0
+max = 9999999
 
 for i in range(math.ceil(len(ns)/stepsize)):
     if (i<skip): continue
