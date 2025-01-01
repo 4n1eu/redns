@@ -11,17 +11,25 @@ log2_fhandler = logging.FileHandler("log/roundrobin.log")
 log2_fhandler.setFormatter(log2_formatter)
 log2.addHandler(log2_fhandler)
 
-
-ns = redns.getList("ns1")
 i = 0
-def getns():
+def getns(ns):
     global i
-    i = (i+1)%len(ns)
-    return ns[i]
+    i = i+1
+    return ns[i%len(ns)]
 
-def roundRobin(domain, rtype):
-    usens = getns()
-    res = redns.resolve(domain, rtype, nameserver=usens, timeout=2, retries=2)
+def roundRobin(domain, rtype, opt={
+      'retries' = 2,
+      'timeout' = 2,
+      'ns_list' = nameservers.get('ns2')
+    }):
+    
+    usens = getns(opt['ns_list'])
+
+    for i in range(opt['retries']):
+        res = redns.resolve(domain, rtype, nameserver=usens, timeout=opt['timeout'], retries=1)
+        if res != False:
+            continue
+        break
     if res:
         log2.debug(f"valid response for '{domain} IN {rtype}' from {usens}: {res}")
     else:
