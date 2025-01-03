@@ -1,5 +1,4 @@
 import redns
-import nameservers
 import logging
 
 log = logging.getLogger('redns.rr')
@@ -13,7 +12,7 @@ log2_fhandler.setFormatter(log2_formatter)
 log2.addHandler(log2_fhandler)
 
 
-ns = nameservers.get("ns1")
+ns = redns.getList("ns1")
 i = 0
 def getns():
     global i

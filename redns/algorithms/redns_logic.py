@@ -21,6 +21,7 @@ log_formatter = logging.Formatter("%(asctime)s.%(msecs)06d: %(message)s",
                               "%Y-%m-%d %H:%M:%S")
 log = logging.getLogger('redns')
 log.setLevel(logging.INFO)
+
 log_fhandler = logging.FileHandler("log/redns.log")
 log_fhandler.setFormatter(log_formatter)
 log.addHandler(log_fhandler)
@@ -43,8 +44,13 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=3, retri
 
 	resp = None
 	for i in range(retries):
+		dns_req = None
 		try:
 			dns_req = dns.message.make_query(domain, rtype)
+		except Exception as e:
+			log.warning(f"Error building request: {e}")
+			continue
+		try:
 			resp, wasTCP = dns.query.udp_with_fallback(dns_req, where=ns_ip, port=int(ns_port), timeout=timeout, one_rr_per_rrset=True)
 			break
 		except Exception as e:
@@ -60,12 +66,11 @@ def resolve(domain:str, rtype:str, nameserver:str="1.1.1.1:53", timeout=3, retri
 		return resp.answer
 
 
-
 def handle_request(self, dns_req:dns.message.Message, *args, **kwargs):
 	log.info("handling new dns request")
 	msg = dns.message.make_response(dns_req, **kwargs)
 	rrset = dns_req.question[0]
-
+	
 	# options-dict
 	has_options = False
 	opt = dict(self.customOptions)
@@ -113,7 +118,7 @@ class DNSHandlerTCP(socketserver.StreamRequestHandler):
 			return dns.query.send_tcp(self.request, response)
 		except Exception as e:
 			error(f"Error for tcp request: {json.dumps({'id': str(req.id), 'question': str(req.question), 'error': str(e)})}")
- 
+
 
 serverlist = []
 
@@ -182,4 +187,4 @@ signal.signal(signal.SIGTERM, handle_exit)
 signal.signal(signal.SIGINT, handle_exit)
 
 if __name__ == "__main__":
-    start(port=8445)
+    start()

@@ -1,7 +1,6 @@
 import redns
 import dns.rrset
 import dns.rdatatype
-import nameservers
 import logging
 import json
 import threading
@@ -47,7 +46,7 @@ def vote_majority(rrSets, rrSetCounts, opt):
     return answer
 
 def majVote(domain, rtype, opt={
-        'ns_list': nameservers.get('ns1'),
+        'ns_list': redns.getList('ns1'),
         'timeout': 2,
         'retries': 1,
         'majThreshold': 0.5,

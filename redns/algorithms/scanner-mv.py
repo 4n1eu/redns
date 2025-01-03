@@ -42,9 +42,3 @@ for thread in threads:
     
 redns.stop(a)
 redns.stop(b)
-
-# times to scan 1000 domains at home, 10 ns each, using one middle-server:
-# using 30 scanners, 0.1s interval: 47s
-# using 20 scanners, 0.1s interval: 58s
-# using 10 scanners, 0.1s interval: 76s
-# using 10 scanners, 0.01s interval: 77s

@@ -1,11 +1,10 @@
 import redns
-import nameservers
 import majVote
+import redns.redns
 
 # customizable:
 nsCountPerMajvoter = 5
-
-all_ns = nameservers.get('ns3', max=24)
+all_ns = redns.getList('ns3', max=24)
 nsCount = len(all_ns)
 
 # if nsCount is not divisble by nsCountPerMajvoter, just ignore trailing nameservers

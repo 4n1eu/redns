@@ -2,11 +2,10 @@ import redns
 import majVote
 import time
 import math
-import nameservers
 
 
 domain = "redns6.4n1.dev"
-ns = nameservers.get('actives', max=70000)
+ns = redns.getList('actives', max=70000)
 
 stepsize = 100
 skip = 0

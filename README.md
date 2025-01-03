@@ -12,3 +12,12 @@ To implement your own algorithm:
 - write a function func(domain: str, rType: dns.rdatatype.RdataType) -> list[dns.rrset.RRset]
 - use redns.resolve() -> list[dns.rrset.RRset] to resolve a domain name
 - use redns.start(ip, port, algorithm) to submit your function and start reDNS on the given ip and port
+
+
+SETUP:
+
+pip:
+- dnspython
+- cryptography
+export PYTHONPATH=/home/m/Dokumente/uni/BA/dnsr
+(bei mir ist es in ~/.bashrc)

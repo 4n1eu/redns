@@ -1,3 +1,4 @@
+import math
 
 file = open("majVote.log", 'r').read().strip('\n').split('\n')
 nsCount = 10
@@ -10,7 +11,8 @@ nsResponses = [0]*nsCount
 
 nsMinorityResponse = [0]*(nsCount+1)
 
-for line in file:
+for i, line in enumerate(file):
+    if (i%100000 ==0): print(f"{math.floor(i/len(file)*100)}%", end='\r')
 
     if "No answers" in line:
         noAnswersCount = noAnswersCount+1
@@ -48,4 +50,4 @@ expectedAnswers = nsCount * len(results)
 print(f"\nNo or empty response: {expectedAnswers-totalAnswerCount}x ({(expectedAnswers-totalAnswerCount)/expectedAnswers*100}%)")
 for i in range(nsCount):
     nsResponses[i] = len(results) - nsResponses[i]
-print(f"response-count by ns: {nsResponses}")
+print(f"anzahl fehlender antworten - by ns: {nsResponses}")
